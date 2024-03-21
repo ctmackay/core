@@ -19,8 +19,7 @@ jobs:
 
     - name: Make changes in the deploy repository
       run: |
-        run: echo ${{ github.sha }} >> ${GITHUB_WORKSPACE}/src/core-sha.txt
-        
+        echo ${{ github.sha }} >> ${GITHUB_WORKSPACE}/src/core-sha.txt
       shell: bash
 
     - name: Commit and push changes

@@ -15,16 +15,16 @@ jobs:
         repository: 'ctmackay/deploy'
         token: ${{ secrets.DEPLOY_REPO_TOKEN }}
         ref: 'main' # Change to your default branch if it's not 'main'
-        path: 'src'
+        path: 'deploy'
 
     - name: Make changes in the deploy repository
       run: |
-        echo ${{ github.sha }} >> ${GITHUB_WORKSPACE}/src/core-sha.txt
+        echo ${{ github.sha }} >> ${GITHUB_WORKSPACE}/deploy/src/core-sha.txt
       shell: bash
 
     - name: Commit and push changes
       run: |
-        cd ${GITHUB_WORKSPACE}
+        cd ${GITHUB_WORKSPACE}/deploy
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
         git add .
@@ -36,7 +36,7 @@ jobs:
       uses: peter-evans/create-pull-request@v3
       with:
         token: ${{ secrets.DEPLOY_REPO_TOKEN }}
-        path: 'src'
+        path: 'deploy'
         commit-message: 'Update deploy repository'
         title: 'Automated PR: Update from core repository'
         body: 'This is an automated pull request to update from the core repository.'

@@ -25,11 +25,12 @@ jobs:
     - name: Commit and push changes
       run: |
         cd ${GITHUB_WORKSPACE}/deploy
+        git checkout -b update-from-core-${{ github.sha }}
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
         git add .
         git commit -m "Automated update from core repository release"
-        git push
+        git push origin update-from-core-${{ github.sha }}
       shell: bash
 
     - name: Create Pull Request in deploy repository

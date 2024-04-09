@@ -5,7 +5,7 @@ on:
     types: [published]
 
 jobs:
-  update-deploy-repo:
+  update-early-adopters:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,29 +29,16 @@ jobs:
         ref: 'main' # Change to your default branch if it's not 'main'
         path: 'deploy'
 
-    - name: Make changes in the deploy repository (early)
+    - name: Make changes in the deploy repository (early adopters)
       run: |
-        echo "${{ steps.extract_sha.outputs.sha }}" > ${GITHUB_WORKSPACE}/deploy/src/core-sha.txt
-        echo "${{ steps.extract_tag_name.outputs.tag_name }}" > ${GITHUB_WORKSPACE}/deploy/src/release_info.txt
+        # Stage and commit changes for early adopters
         cp ${GITHUB_WORKSPACE}/deploy/src/template.py ${GITHUB_WORKSPACE}/deploy/src/settings.py
         sed -i 's/REPLACE_ME_GIT_TAG/${{ steps.extract_tag_name.outputs.tag_name }}/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
         sed -i 's/REPLACE_ME_GIT_SHA/${{ steps.extract_sha.outputs.sha }}/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
         sed -i 's/REPLACE_ME_CONFIG_FOLDER/logistics-core-early/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
-        sed -i 's/REPLACE_ME_SLS_FILENAME/your_sls_filename/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
-
+        sed -i 's/REPLACE_ME_SLS_FILENAME/prod_early_adopter.sls/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
 
       shell: bash
-
-    # - name: Commit and push changes
-    #   run: |
-    #     cd ${GITHUB_WORKSPACE}/deploy
-    #     git checkout -b update-from-core-${{ github.sha }}
-    #     git config user.name "github-actions"
-    #     git config user.email "github-actions@github.com"
-    #     git add .
-    #     git commit -m "Automated update from core repository release"
-    #     git push origin update-from-core-${{ github.sha }}
-    #   shell: bash
 
     - name: Create and push branch and open pull request
       uses: peter-evans/create-pull-request@v3
@@ -60,7 +47,55 @@ jobs:
         path: 'deploy'
         delete-branch: true
         commit-message: 'Prerelease update'
-        title: 'Automated PR: Update from core repository'
-        body: 'This is an automated pull request to update from the core repository.'
+        title: 'Update Early adopters ${{ steps.extract_tag_name.outputs.tag_name }}'
+        body: 'This is an automated pull request to update from the core repository. ${{ steps.extract_tag_name.outputs.tag_name }}'
         base: 'main' # Target branch in the deploy repository
         branch: 'update-from-core-${{ github.sha }}'
+
+
+  update-prod:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Extract latest commit SHA
+      id: extract_sha
+      run: echo "::set-output name=sha::$(git rev-parse HEAD)"
+
+    - name: Extract release tag name
+      id: extract_tag_name
+      run: echo "::set-output name=tag_name::${{ github.event.release.tag_name }}"
+
+
+    - name: Checkout deploy repository
+      uses: actions/checkout@v3
+      with:
+        repository: 'ctmackay/deploy'
+        token: ${{ secrets.DEPLOY_REPO_TOKEN }}
+        ref: 'main' # Change to your default branch if it's not 'main'
+        path: 'deploy'
+
+    - name: Make changes in the deploy repository (prod)
+      run: |
+        # Stage and commit changes for early adopters settings_prod.py
+        cp ${GITHUB_WORKSPACE}/deploy/src/template.py ${GITHUB_WORKSPACE}/deploy/src/settings_prod.py
+        sed -i 's/REPLACE_ME_GIT_TAG/${{ steps.extract_tag_name.outputs.tag_name }}/g' ${GITHUB_WORKSPACE}/deploy/src/settings_prod.py
+        sed -i 's/REPLACE_ME_GIT_SHA/${{ steps.extract_sha.outputs.sha }}/g' ${GITHUB_WORKSPACE}/deploy/src/settings_prod.py
+        sed -i 's/REPLACE_ME_CONFIG_FOLDER/logistics-core-early/g' ${GITHUB_WORKSPACE}/deploy/src/settings_prod.py
+        sed -i 's/REPLACE_ME_SLS_FILENAME/prod_early_adopter.sls/g' ${GITHUB_WORKSPACE}/deploy/src/settings_prod.py
+
+      shell: bash
+
+    - name: Create and push branch and open pull request
+      uses: peter-evans/create-pull-request@v3
+      with:
+        token: ${{ secrets.DEPLOY_REPO_TOKEN }}
+        path: 'deploy'
+        delete-branch: true
+        commit-message: 'Prerelease update'
+        title: 'Update general population ${{ steps.extract_tag_name.outputs.tag_name }}'
+        body: 'This is an automated pull request to update from the core repository. ${{ steps.extract_tag_name.outputs.tag_name }}'
+        base: 'main' # Target branch in the deploy repository
+        branch: 'update-prod-from-core-${{ github.sha }}'

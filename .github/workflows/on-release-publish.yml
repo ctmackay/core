@@ -9,48 +9,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-    - name: define settings modifier function
-      run: |
-        update_release_settings() {
-          case "$1" in
-            "early")
-              echo "Updating early adopters."
-              dest_file=${GITHUB_WORKSPACE}/deploy/src/settings_early.py
-              state_file=prod_early_adopter.sls
-              config_folder=logistics-core-early
-              var_name=PROD_EARLY_ADOPTER_SETTINGS
-              ;;
-            "release")
-              echo "Updating release."
-              dest_file=${GITHUB_WORKSPACE}/deploy/src/settings_release.py
-              state_file=prod_early_adopter.sls
-              config_folder=logistics-core-early
-              var_name=RELEASE_ADOPTER_SETTINGS
-              ;;
-            "prod")
-              echo "Updating prod."
-              dest_file=${GITHUB_WORKSPACE}/deploy/src/settings_prod.py
-              state_file=prod_release.sls
-              config_folder=logistics-core-prod
-              var_name=PROD_ADOPTER_SETTINGS
-              ;;
-            *)
-              echo "Invalid argument: $1"
-              exit 1
-              ;;
-          esac
-
-          cp ${GITHUB_WORKSPACE}/deploy/src/template.py $dest_file
-          sed -i 's/REPLACE_ME_GIT_TAG/${{ steps.extract_tag_name.outputs.tag_name }}/g' $dest_file
-          sed -i 's/REPLACE_ME_GIT_SHA/${{ steps.extract_sha.outputs.sha }}/g' $dest_file
-          sed -i 's/REPLACE_ME_CONFIG_FOLDER/$config_folder/g' $dest_file
-          sed -i 's/REPLACE_ME_SLS_FILENAME/$state_file/g' $dest_file
-          sed -i 's/REPLACE_ME_EXPORT_VAR/$var_name/g' $dest_file
-        }
-
+      # checks out the core repository and extracts the latest commit SHA and release tag name
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Extract latest commit SHA
       id: extract_sha
@@ -60,7 +21,7 @@ jobs:
       id: extract_tag_name
       run: echo "::set-output name=tag_name::${{ github.event.release.tag_name }}"
 
-
+    # checkout deploy repo, make changes, and open a pull request
     - name: Checkout deploy repository
       uses: actions/checkout@v3
       with:
@@ -71,14 +32,7 @@ jobs:
 
     - name: Make changes in the deploy repository (early adopters)
       run: |
-        update_release_settings "early"
-        # # Stage and commit changes for early adopters
-        # cp ${GITHUB_WORKSPACE}/deploy/src/template.py ${GITHUB_WORKSPACE}/deploy/src/settings.py
-        # sed -i 's/REPLACE_ME_GIT_TAG/${{ steps.extract_tag_name.outputs.tag_name }}/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
-        # sed -i 's/REPLACE_ME_GIT_SHA/${{ steps.extract_sha.outputs.sha }}/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
-        # sed -i 's/REPLACE_ME_CONFIG_FOLDER/logistics-core-early/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
-        # sed -i 's/REPLACE_ME_SLS_FILENAME/prod_early_adopter.sls/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
-        # sed -i 's/REPLACE_ME_EXPORT_VAR/PROD_EARLY_ADOPTER_SETTINGS/g' ${GITHUB_WORKSPACE}/deploy/src/settings.py
+        ${GITHUB_WORKSPACE}/deploy/src/release_updater.sh early ${{ steps.extract_tag_name.outputs.tag_name }} ${{ steps.extract_sha.outputs.sha }}
       shell: bash
 
     - name: Create and push branch and open pull request
